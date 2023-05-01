@@ -6,7 +6,6 @@ import javafx.application.Application;
  * Driver for the {@code ApiApp} class.
  */
 public class ApiDriver {
-
     /**
      * Main entry-point into the application.
      * @param args the command-line arguments.
