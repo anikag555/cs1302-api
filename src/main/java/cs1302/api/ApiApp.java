@@ -1,3 +1,4 @@
+
 package cs1302.api;
 
 import javafx.application.Application;
@@ -59,6 +60,8 @@ public class ApiApp extends Application {
     private static class Movie {
         String tmsId;
         String title;
+        PreferredImage preferredImage;
+//        Showtimes [] showtimes;
     }
 
     private static class TMovieResponse {
@@ -69,12 +72,11 @@ public class ApiApp extends Application {
     private static class TMovie {
         String original_title;
         String id;
-        String backdrop_path;
     }
 
-
-
-
+    private static class PreferredImage {
+        String uri;
+    }
 
    /** HTTP client. */
     public static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -91,15 +93,16 @@ public class ApiApp extends Application {
     Stage stage;
     Scene scene;
     VBox root;
-    HBox titleLayer;
-    HBox showLayer;
-    String imageUrl;
-    Date date;
-
     HBox queryLayer;
+    TilePane tilePane;
+
+    String posterUrl;
+    Date date;
+    String [] posterUrls;
+
+    Label searchLabel;
     TextField searchField;
-
-
+    Button searchButton;
 
    /**
      * Constructs an {@code ApiApp} object. This default (i.e., no argument)
@@ -108,43 +111,71 @@ public class ApiApp extends Application {
     public ApiApp() {
         root = new VBox();
         date = new Date();
-        imageUrl = "https://image.tmdb.org/t/p/original";
+        //imageUrl = "https://image.tmdb.org/t/p/original";
+        posterUrl = "https://demo.tmsimg.com/";
+        posterUrls = null;
 
-        titleLayer = new HBox(8);
         queryLayer = new HBox(8);
-
+        searchLabel = new Label ("Zip Code:");
         searchField = new TextField();
-        searchField.setPromptText("zip code:");
+        searchButton = new Button();
+        searchButton.setText("Movies");
+
+        tilePane = new TilePane();
 
 
     } // ApiApp
 
+    /** {@inheritDoc} */
+    @Override
     public void init() {
-        this.root.getChildren().addAll(titleLayer, queryLayer);
-        queryLayer.getChildren().addAll(searchField);
-
         Image bannerImage = new Image("https://static.vecteezy.com/system/resources/"
             + "previews/011/834/992/original/blank-ticket-template-png.png");
         ImageView banner = new ImageView(bannerImage);
         banner.setPreserveRatio(true);
         banner.setFitWidth(640);
 
-        // some labels to display information
+        // sets the appropriate HBoxes for root (VBox)
+        this.root.getChildren().addAll(queryLayer, banner, tilePane);
+        HBox.setHgrow(searchLabel,Priority.ALWAYS);
+        HBox.setHgrow(searchField,Priority.ALWAYS);
+        HBox.setHgrow(searchButton,Priority.ALWAYS);
 
-
-        // setup scene
-        root.getChildren().addAll(banner);
+        // sets appropriate components for HBox that takes query
+        queryLayer.getChildren().addAll(searchLabel, searchField, searchButton);
     }
 
+
+/*     EventHandler<ActionEvent> queryHandler = (ActionEvent e) -> {
+         String search = searchField.getText();
+         String filterSearch = URLEncoder.encode(search, StandardCharsets.UTF_8);
+         try {
+             int i = Integer.parseInt(filterSearch);
+         } catch (NumberFormatException nfe) {
+             System.out.println("Error! Invalid integer. Try again.");
+         }
+
+
+          tilePane.getChildren().clear();
+          String body = this.connect(filterSearch, media);
+
+          String temp = "https://itunes.apple.com/search?term="
+              + filterSearch + "&limit=200&media=" + media;
+
+          startLabel.setText(temp);
+         HashSet <String> urlArray = this.parse(body, temp);
+          this.displayImg(urlArray);
+
+      };*/
 
     /** {@inheritDoc} */
     @Override
     public void start(Stage stage) {
         this.stage = stage;
         String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
-
+        String zip = "94536";
         String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
-            + "fvekujkhpc7zxt7rtmx77gvr&startDate=" + newDate + "&zip=30605";
+            + "fvekujkhpc7zxt7rtmx77gvr&startDate=" + newDate + "&zip=" + zip;
 
         String body = this.connect(url);
         String title = this.parse(body);
@@ -170,23 +201,25 @@ public class ApiApp extends Application {
       */
     public static String connect(String url) {
         String body = "";
-
         try {
+            // builds request and creates URI
             HttpRequest request = HttpRequest.newBuilder()
                 .version(HttpClient.Version.HTTP_2)
                 .uri(URI.create(url))
                 .headers("Accept-Enconding", "gzip, deflate")
                 .build();
 
+            // sends request
             HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
 
+            // checks status of resopnse -> if valid
             if (response.statusCode() != 200) {
                 throw new IOException("HTTP " + response.statusCode());
             }
 
-            // use response body
+            // uses response body
             body =  response.body();
-            System.out.println("body :" + body);
+//            System.out.println("body :" + body);
         } catch (IOException | InterruptedException e) {
             System.err.println(e);
             e.printStackTrace();
@@ -195,18 +228,44 @@ public class ApiApp extends Application {
     }
 
     /**
-     * Parses the JSON output and assigns non-duplicate URIs to a String array.
+     * Parses the JSON output and .
      * @param body the response body of JSON
      * @return String array of non-duplicate URIs
      */
     public String parse(String body) {
         Movie [] movie  = GSON.fromJson(body, Movie[].class);
+        String title = null;
+        String firsttitle = movie[4].title;
         try {
+
             for (int i = 0; i < movie.length; i++) {
-                String title = movie[i].title;
+             title = movie[i].title;
                 System.out.println("title : " + title);
-                return title;
+             }
+
+            // gathers uris for posters
+            posterUrls = new String [movie.length];
+            for (int i = 0; i < movie.length; i++) {
+                String fullUrl = posterUrl + movie[i].preferredImage.uri;
+                posterUrls [i] = fullUrl;
+                System.out.println("uris : " + fullUrl);
             }
+
+            tilePane.setOrientation(Orientation.HORIZONTAL);
+            tilePane.setTileAlignment(Pos.CENTER_LEFT);
+            tilePane.setPrefRows(4);
+
+            Image [] allImages = new Image [posterUrls.length];
+
+            for (int i = 0; i < posterUrls.length; i++) {
+                allImages [i] = new Image (posterUrls[i]);
+                ImageView imgView = new ImageView();
+                imgView.setImage(allImages[i]);
+                imgView.setFitWidth(100);
+                imgView.setFitHeight(100);
+                tilePane.getChildren().add(imgView);
+            }
+
         } catch (Exception e) {
             TextArea text =
                 new TextArea("Exception: " + e );
@@ -218,26 +277,33 @@ public class ApiApp extends Application {
             alert.showAndWait();
         } // try-catch
 
-        return null;
+        return firsttitle;
     }
 
-    public String  getMovieReview(String title) {
-
-        String ntitle = URLEncoder.encode(title, StandardCharsets.UTF_8);
-        String body = this.connect("https://api.themoviedb.org/3/search/movie?api_key="
+    public String getMovieReview(String title) {
+        String reviewBody = "";
+        try {
+            String ntitle = URLEncoder.encode(title, StandardCharsets.UTF_8);
+            String body = this.connect("https://api.themoviedb.org/3/search/movie?api_key="
             + "7df71a299c6ebb48c7ed1e01eb9e174b&query=" + ntitle);
 
-        TMovieResponse apiResponse = GSON.fromJson(body,TMovieResponse.class);
+            TMovieResponse apiResponse = GSON.fromJson(body,TMovieResponse.class);
 
-        String id = apiResponse.results[0].id;
-        String picURL = apiResponse.results[0].backdrop_path;
+            String id = apiResponse.results[0].id;
+            System.out.println(id);
+//            String picURL = apiResponse.results[0].backdrop_path;
 
-        String reviewBody = this.connect("https://api.themoviedb.org/3/movie/" + id +"/reviews?"
-        + "api_key=7df71a299c6ebb48c7ed1e01eb9e174b");
+            reviewBody = this.connect("https://api.themoviedb.org/3/movie/"
+            + id + "/reviews?" + "api_key=7df71a299c6ebb48c7ed1e01eb9e174b");
 
-        System.out.print("reviewBody : \n" + reviewBody);
-
+            System.out.print("reviewBody : \n" + reviewBody);
+        } catch (Exception e) {
+            System.err.println(e);
+            e.printStackTrace();
+        }
         return reviewBody;
     }
+
+
 
 } // ApiApp
