@@ -1,4 +1,3 @@
-
 package cs1302.api;
 
 import javafx.application.Application;
@@ -51,6 +50,8 @@ import java.time.LocalTime;
 import javafx.util.Duration;
 import java.util.Date;
 import java.text.SimpleDateFormat;
+import javafx.scene.input.MouseEvent;
+import javafx.stage.Popup;
 
 /**
  * REPLACE WITH NON-SHOUTING DESCRIPTION OF YOUR APP.
@@ -78,6 +79,26 @@ public class ApiApp extends Application {
         String uri;
     }
 
+    private static class TReviewsResponse {
+        String id;
+        String page;
+        Review [] results;
+    }
+
+    private static class Review {
+        String author;
+        AuthorDetails author_details;
+        String content;
+    }
+
+    private static class AuthorDetails {
+        String username;
+        String avatar_path;
+        String rating;
+    }
+
+
+
    /** HTTP client. */
     public static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
         .version(HttpClient.Version.HTTP_2)           // uses HTTP protocol version 2 where possible
@@ -99,10 +120,12 @@ public class ApiApp extends Application {
     String posterUrl;
     Date date;
     String [] posterUrls;
+    String reviewBody;
 
     Label searchLabel;
     TextField searchField;
     Button searchButton;
+
 
    /**
      * Constructs an {@code ApiApp} object. This default (i.e., no argument)
@@ -114,6 +137,8 @@ public class ApiApp extends Application {
         //imageUrl = "https://image.tmdb.org/t/p/original";
         posterUrl = "https://demo.tmsimg.com/";
         posterUrls = null;
+        reviewBody = "";
+
 
         queryLayer = new HBox(8);
         searchLabel = new Label ("Zip Code:");
@@ -180,7 +205,7 @@ public class ApiApp extends Application {
         String body = this.connect(url);
         String title = this.parse(body);
         // demonstrate how to load local asset using "file:resources/"
-        this.getMovieReview(title);
+//        this.getMovieReview(title);
 
 
         scene = new Scene(root);
@@ -233,16 +258,9 @@ public class ApiApp extends Application {
      * @return String array of non-duplicate URIs
      */
     public String parse(String body) {
-        Movie [] movie  = GSON.fromJson(body, Movie[].class);
-        String title = null;
-        String firsttitle = movie[4].title;
+        final Movie [] movie  = GSON.fromJson(body, Movie[].class);
+        String firsttitle = movie[5].title;
         try {
-
-            for (int i = 0; i < movie.length; i++) {
-             title = movie[i].title;
-                System.out.println("title : " + title);
-             }
-
             // gathers uris for posters
             posterUrls = new String [movie.length];
             for (int i = 0; i < movie.length; i++) {
@@ -263,6 +281,26 @@ public class ApiApp extends Application {
                 imgView.setImage(allImages[i]);
                 imgView.setFitWidth(100);
                 imgView.setFitHeight(100);
+
+                final String temp = movie[i].title;
+                imgView.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+                    System.out.println("Tile pressed ");
+                    //Alert a = new Alert(Alert.AlertType.INFORMATION);
+                    //a.setContentText(movieTitles[i]);
+                    Popup a = new Popup();
+                    a.setAutoHide(true);
+                    a.setAutoFix(true);
+                    Label popupLabel = new Label(temp + "\n" + this.getMovieReview(temp));
+                    popupLabel.setStyle("-fx-background-color:black;"
+                        + " -fx-text-fill:white;" + " -fx-font-size:14;"
+                        + " -fx-padding: 10px;" + " -fx-background-radius: 10;");
+                    ScrollPane scrollPane = new ScrollPane();
+                    //scrollPane.setContent(this.getMovieReview(temp));
+                    a.getContent().add(popupLabel);
+                    //a.getContent().add(scrollPane);
+                    a.show(stage);
+                    event.consume();
+                });
                 tilePane.getChildren().add(imgView);
             }
 
@@ -281,22 +319,49 @@ public class ApiApp extends Application {
     }
 
     public String getMovieReview(String title) {
-        String reviewBody = "";
+
+
+        String reviewData = "";
+
         try {
             String ntitle = URLEncoder.encode(title, StandardCharsets.UTF_8);
+
             String body = this.connect("https://api.themoviedb.org/3/search/movie?api_key="
             + "7df71a299c6ebb48c7ed1e01eb9e174b&query=" + ntitle);
 
+//            System.out.println("title : " + title + "\n" + body);
             TMovieResponse apiResponse = GSON.fromJson(body,TMovieResponse.class);
-
+            if (apiResponse.results.length == 0) {
+                return "Reviews not found for this movie yet.";
+            }
             String id = apiResponse.results[0].id;
-            System.out.println(id);
+
+//            System.out.println(id);
 //            String picURL = apiResponse.results[0].backdrop_path;
 
             reviewBody = this.connect("https://api.themoviedb.org/3/movie/"
             + id + "/reviews?" + "api_key=7df71a299c6ebb48c7ed1e01eb9e174b");
 
-            System.out.print("reviewBody : \n" + reviewBody);
+//            this.parseReviews(reviewBody);
+//            System.out.print("reviewBody : \n" + reviewBody);
+
+            TReviewsResponse revResponse  = GSON.fromJson(reviewBody, TReviewsResponse.class);
+            if (revResponse.results.length == 0) {
+                return "Reviews not found for this movie yet.";
+            } else {
+                int x = 0;
+                for (Review r : revResponse.results) {
+                    if (x++ == 5) {
+                        System.out.println("review : " + x + " " + reviewData);
+                        return reviewData;
+                    } else {
+                        reviewData += r.content + "\n ";
+                    }
+
+                }
+            }
+            //System.out.println("review : " + revResponse.results[0].content);
+
         } catch (Exception e) {
             System.err.println(e);
             e.printStackTrace();
@@ -304,6 +369,9 @@ public class ApiApp extends Application {
         return reviewBody;
     }
 
+//    public String parseReviews(String reviewBody) {
+
+    //  }
 
 
 } // ApiApp
