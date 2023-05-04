@@ -168,42 +168,80 @@ public class ApiApp extends Application {
 
         // sets appropriate components for HBox that takes query
         queryLayer.getChildren().addAll(searchLabel, searchField, searchButton);
+        searchButton.setOnAction(queryHandler);
     }
 
 
-/*     EventHandler<ActionEvent> queryHandler = (ActionEvent e) -> {
+     EventHandler<ActionEvent> queryHandler = (ActionEvent e) -> {
          String search = searchField.getText();
          String filterSearch = URLEncoder.encode(search, StandardCharsets.UTF_8);
+         String validSearch = "";
          try {
-             int i = Integer.parseInt(filterSearch);
-         } catch (NumberFormatException nfe) {
-             System.out.println("Error! Invalid integer. Try again.");
+             if (filterSearch.length() == 5 ) {
+                 if (isInt(filterSearch)) {
+                     validSearch = filterSearch;
+                 } else {
+                     throw new NumberFormatException();
+                 }
+             } else {
+                 throw new IllegalArgumentException();
+             }
+             String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
+             String zip = validSearch;
+             // pvk4aug6w8ntdmhftwgpeasb
+             // fvekujkhpc7zxt7rtmx77gvr
+             String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
+                 + "pvk4aug6w8ntdmhftwgpeasb&startDate=" + newDate + "&zip=" + zip;
+//             System.out.println("url : " + url);
+             this.tilePane.getChildren().clear();
+             String body = this.connect(url);
+//             System.out.println("body : " + body);
+             this.parse(body);
+
+         } catch (Exception nfe) {
+             TextArea text =
+                 new TextArea("Error! Invalid integer. Try again! \nException: " + nfe );
+             text.setEditable(false);
+             Alert alert = new Alert(AlertType.ERROR);
+             alert.getDialogPane().setPrefSize(377, 233);
+             alert.getDialogPane().setContent(text);
+             alert.setResizable(true);
+             alert.showAndWait();
          }
+         //e.consume();
 
+     /*String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
+         String zip = filterSearch;
+         String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
+         + "fvekujkhpc7zxt7rtmx77gvr&startDate=" + newDate + "&zip=" + zip;
 
-          tilePane.getChildren().clear();
-          String body = this.connect(filterSearch, media);
+         String body = this.connect(url);
+         this.parse(body);
+     */
+     };
 
-          String temp = "https://itunes.apple.com/search?term="
-              + filterSearch + "&limit=200&media=" + media;
+    /**
+     * Accept a String and return true if it can be parsed as an int.
+     * @param s
+     * @return res
+     */
+    public static boolean isInt(String s) {
+        boolean res = false;
 
-          startLabel.setText(temp);
-         HashSet <String> urlArray = this.parse(body, temp);
-          this.displayImg(urlArray);
+        try {
+            Integer.parseInt(s);
+            res = true;
+        } catch (NumberFormatException e) {
+            res = false;
+        }
 
-      };*/
+        return res;
+    }
 
     /** {@inheritDoc} */
     @Override
     public void start(Stage stage) {
         this.stage = stage;
-        String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
-        String zip = "94536";
-        String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
-            + "fvekujkhpc7zxt7rtmx77gvr&startDate=" + newDate + "&zip=" + zip;
-
-        String body = this.connect(url);
-        String title = this.parse(body);
         // demonstrate how to load local asset using "file:resources/"
 //        this.getMovieReview(title);
 
@@ -255,18 +293,17 @@ public class ApiApp extends Application {
     /**
      * Parses the JSON output and .
      * @param body the response body of JSON
-     * @return String array of non-duplicate URIs
      */
-    public String parse(String body) {
+    public void parse(String body) {
         final Movie [] movie  = GSON.fromJson(body, Movie[].class);
-        String firsttitle = movie[5].title;
+//        String firsttitle = movie[5].title;
         try {
             // gathers uris for posters
             posterUrls = new String [movie.length];
             for (int i = 0; i < movie.length; i++) {
                 String fullUrl = posterUrl + movie[i].preferredImage.uri;
                 posterUrls [i] = fullUrl;
-                System.out.println("uris : " + fullUrl);
+                //System.out.println("uris : " + fullUrl);
             }
 
             tilePane.setOrientation(Orientation.HORIZONTAL);
@@ -288,14 +325,23 @@ public class ApiApp extends Application {
                     //Alert a = new Alert(Alert.AlertType.INFORMATION);
                     //a.setContentText(movieTitles[i]);
                     Popup a = new Popup();
+                    ScrollPane scrollPane = new ScrollPane();
+                    VBox vBox = new VBox();
+                    vBox.setAlignment(Pos.TOP_CENTER);
+                    vBox.setFillWidth(true);
+
                     a.setAutoHide(true);
                     a.setAutoFix(true);
+
                     Label popupLabel = new Label(temp + "\n" + this.getMovieReview(temp));
                     popupLabel.setStyle("-fx-background-color:black;"
                         + " -fx-text-fill:white;" + " -fx-font-size:14;"
                         + " -fx-padding: 10px;" + " -fx-background-radius: 10;");
-                    ScrollPane scrollPane = new ScrollPane();
-                    //scrollPane.setContent(this.getMovieReview(temp));
+                    popupLabel.setMaxWidth(350);
+                    popupLabel.setWrapText(true);
+                    vBox.getChildren().addAll(popupLabel);
+
+                    scrollPane.setContent(vBox);
                     a.getContent().add(popupLabel);
                     //a.getContent().add(scrollPane);
                     a.show(stage);
@@ -315,7 +361,7 @@ public class ApiApp extends Application {
             alert.showAndWait();
         } // try-catch
 
-        return firsttitle;
+        //      return firsttitle;
     }
 
     public String getMovieReview(String title) {
