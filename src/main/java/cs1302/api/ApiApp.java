@@ -162,6 +162,7 @@ public class ApiApp extends Application {
 
         // sets the appropriate HBoxes for root (VBox)
         this.root.getChildren().addAll(queryLayer, banner, tilePane);
+        this.root.setVgrow(tilePane, Priority.ALWAYS);
         HBox.setHgrow(searchLabel,Priority.ALWAYS);
         HBox.setHgrow(searchField,Priority.ALWAYS);
         HBox.setHgrow(searchButton,Priority.ALWAYS);
@@ -195,7 +196,6 @@ public class ApiApp extends Application {
 //             System.out.println("url : " + url);
              this.tilePane.getChildren().clear();
              String body = this.connect(url);
-//             System.out.println("body : " + body);
              this.parse(body);
 
          } catch (Exception nfe) {
@@ -208,16 +208,6 @@ public class ApiApp extends Application {
              alert.setResizable(true);
              alert.showAndWait();
          }
-         //e.consume();
-
-     /*String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
-         String zip = filterSearch;
-         String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
-         + "fvekujkhpc7zxt7rtmx77gvr&startDate=" + newDate + "&zip=" + zip;
-
-         String body = this.connect(url);
-         this.parse(body);
-     */
      };
 
     /**
@@ -325,25 +315,32 @@ public class ApiApp extends Application {
                     //Alert a = new Alert(Alert.AlertType.INFORMATION);
                     //a.setContentText(movieTitles[i]);
                     Popup a = new Popup();
-                    ScrollPane scrollPane = new ScrollPane();
                     VBox vBox = new VBox();
-                    vBox.setAlignment(Pos.TOP_CENTER);
-                    vBox.setFillWidth(true);
 
                     a.setAutoHide(true);
                     a.setAutoFix(true);
 
                     Label popupLabel = new Label(temp + "\n" + this.getMovieReview(temp));
-                    popupLabel.setStyle("-fx-background-color:black;"
-                        + " -fx-text-fill:white;" + " -fx-font-size:14;"
+                    popupLabel.setStyle("-fx-background-color:white;"
+                        + " -fx-text-fill:black;" + " -fx-font-size:14;"
                         + " -fx-padding: 10px;" + " -fx-background-radius: 10;");
-                    popupLabel.setMaxWidth(350);
-                    popupLabel.setWrapText(true);
-                    vBox.getChildren().addAll(popupLabel);
+//                    popupLabel.setWrapText(true);
+                    popupLabel.maxHeight(720);
+                    popupLabel.maxWidth(700);
 
-                    scrollPane.setContent(vBox);
-                    a.getContent().add(popupLabel);
-                    //a.getContent().add(scrollPane);
+                    // adds vBox to scrollPane
+                    ScrollPane scrollPane = new ScrollPane(vBox);
+
+                    // adds label to vBox
+                    vBox.getChildren().add(popupLabel);
+                    scrollPane.setMaxHeight(720);
+                    scrollPane.setMaxWidth(800);
+//                    scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
+//                    scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+                    // adds scrollPane to popup
+                    a.getContent().add(scrollPane);
+
                     a.show(stage);
                     event.consume();
                 });
@@ -365,31 +362,25 @@ public class ApiApp extends Application {
     }
 
     public String getMovieReview(String title) {
-
-
         String reviewData = "";
 
         try {
             String ntitle = URLEncoder.encode(title, StandardCharsets.UTF_8);
 
+            // takes title to get movie ID
             String body = this.connect("https://api.themoviedb.org/3/search/movie?api_key="
-            + "7df71a299c6ebb48c7ed1e01eb9e174b&query=" + ntitle);
+                + "7df71a299c6ebb48c7ed1e01eb9e174b&query=" + ntitle);
 
-//            System.out.println("title : " + title + "\n" + body);
             TMovieResponse apiResponse = GSON.fromJson(body,TMovieResponse.class);
             if (apiResponse.results.length == 0) {
                 return "Reviews not found for this movie yet.";
-            }
+            } // if-else
             String id = apiResponse.results[0].id;
 
-//            System.out.println(id);
-//            String picURL = apiResponse.results[0].backdrop_path;
-
+            // takes movie ID and returns review data
             reviewBody = this.connect("https://api.themoviedb.org/3/movie/"
             + id + "/reviews?" + "api_key=7df71a299c6ebb48c7ed1e01eb9e174b");
 
-//            this.parseReviews(reviewBody);
-//            System.out.print("reviewBody : \n" + reviewBody);
 
             TReviewsResponse revResponse  = GSON.fromJson(reviewBody, TReviewsResponse.class);
             if (revResponse.results.length == 0) {
@@ -401,18 +392,20 @@ public class ApiApp extends Application {
                         System.out.println("review : " + x + " " + reviewData);
                         return reviewData;
                     } else {
-                        reviewData += r.content + "\n ";
-                    }
+                        reviewData += "Review #" + x + "\n"
+                            + r.content + "\n----------------------------- \n ";
+                    } // if-else
 
-                }
-            }
+                } // for
+
+            } // if-else
             //System.out.println("review : " + revResponse.results[0].content);
 
         } catch (Exception e) {
             System.err.println(e);
             e.printStackTrace();
         }
-        return reviewBody;
+        return reviewData;
     }
 
 //    public String parseReviews(String reviewBody) {
