@@ -52,6 +52,9 @@ import java.util.Date;
 import java.text.SimpleDateFormat;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Popup;
+import javafx.scene.text.*;
+import java.util.HashMap;
+import java.lang.Math;
 
 /**
  * REPLACE WITH NON-SHOUTING DESCRIPTION OF YOUR APP.
@@ -62,7 +65,21 @@ public class ApiApp extends Application {
         String tmsId;
         String title;
         PreferredImage preferredImage;
-//        Showtimes [] showtimes;
+        Showtime [] showtimes;
+        String [] topCast;
+        String [] directors;
+        String [] genres;
+    }
+
+    private static class Showtime {
+        Theater theatre;
+        String dateTime;
+        String ticketURI;
+    }
+
+    private static class Theater {
+        String id;
+        String name;
     }
 
     private static class TMovieResponse {
@@ -125,6 +142,7 @@ public class ApiApp extends Application {
     Label searchLabel;
     TextField searchField;
     Button searchButton;
+    HashMap<String, Movie> moviesMap;
 
 
    /**
@@ -132,33 +150,36 @@ public class ApiApp extends Application {
      * constructor is executed in Step 2 of the JavaFX Application Life-Cycle.
      */
     public ApiApp() {
+        // main components for scene
         root = new VBox();
+        queryLayer = new HBox(8);
+
         date = new Date();
-        //imageUrl = "https://image.tmdb.org/t/p/original";
         posterUrl = "https://demo.tmsimg.com/";
         posterUrls = null;
         reviewBody = "";
+        moviesMap = new HashMap<String,Movie>();
 
-
-        queryLayer = new HBox(8);
+        // query layer components to handle query
         searchLabel = new Label ("Zip Code:");
         searchField = new TextField();
         searchButton = new Button();
         searchButton.setText("Movies");
 
+        // to display currently playing movies
         tilePane = new TilePane();
-
 
     } // ApiApp
 
     /** {@inheritDoc} */
     @Override
     public void init() {
+        // title layer
         Image bannerImage = new Image("https://static.vecteezy.com/system/resources/"
             + "previews/011/834/992/original/blank-ticket-template-png.png");
         ImageView banner = new ImageView(bannerImage);
         banner.setPreserveRatio(true);
-        banner.setFitWidth(640);
+        banner.setFitWidth(720);
 
         // sets the appropriate HBoxes for root (VBox)
         this.root.getChildren().addAll(queryLayer, banner, tilePane);
@@ -170,50 +191,67 @@ public class ApiApp extends Application {
         // sets appropriate components for HBox that takes query
         queryLayer.getChildren().addAll(searchLabel, searchField, searchButton);
         searchButton.setOnAction(queryHandler);
-    }
+
+    } // init
+
+    // Action Event to handle queries when Search Button is pressed
+    EventHandler<ActionEvent> queryHandler = (ActionEvent e) -> {
+        String search = searchField.getText();
+        String filterSearch = URLEncoder.encode(search, StandardCharsets.UTF_8);
+        String validSearch = "";
+
+        // checks for valid input and passes input for URL that builds request
+        try {
+            if (filterSearch.length() == 5 ) {
+                if (isInt(filterSearch)) {
+                    validSearch = filterSearch;
+                } else {
+                    throw new NumberFormatException();
+                }
+            } else {
+                throw new IllegalArgumentException();
+            }
+            String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
+            String zip = validSearch;
+            String key1 = "pvk4aug6w8ntdmhftwgpeasb";
+            String key2 = "fvekujkhpc7zxt7rtmx77gvr";
 
 
-     EventHandler<ActionEvent> queryHandler = (ActionEvent e) -> {
-         String search = searchField.getText();
-         String filterSearch = URLEncoder.encode(search, StandardCharsets.UTF_8);
-         String validSearch = "";
-         try {
-             if (filterSearch.length() == 5 ) {
-                 if (isInt(filterSearch)) {
-                     validSearch = filterSearch;
-                 } else {
-                     throw new NumberFormatException();
-                 }
-             } else {
-                 throw new IllegalArgumentException();
-             }
-             String newDate = new SimpleDateFormat("yyyy-MM-dd").format(date);
-             String zip = validSearch;
-             // pvk4aug6w8ntdmhftwgpeasb
-             // fvekujkhpc7zxt7rtmx77gvr
-             String url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
-                 + "pvk4aug6w8ntdmhftwgpeasb&startDate=" + newDate + "&zip=" + zip;
-//             System.out.println("url : " + url);
-             this.tilePane.getChildren().clear();
-             String body = this.connect(url);
-             this.parse(body);
+            int temp = (int)Math.round(Math.random());
 
-         } catch (Exception nfe) {
-             TextArea text =
-                 new TextArea("Error! Invalid integer. Try again! \nException: " + nfe );
-             text.setEditable(false);
-             Alert alert = new Alert(AlertType.ERROR);
-             alert.getDialogPane().setPrefSize(377, 233);
-             alert.getDialogPane().setContent(text);
-             alert.setResizable(true);
-             alert.showAndWait();
-         }
-     };
+            String url = "";
+
+            if (temp == 0) {
+                url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
+                    + key1 + "&startDate=" + newDate + "&zip=" + zip;
+                System.out.println("key1 is used");
+            } else {
+                url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
+                    + key2 + "&startDate=" + newDate + "&zip=" + zip;
+                System.out.println("key2 is used");
+            }
+
+            this.tilePane.getChildren().clear();
+            String body = this.connect(url);
+            this.parse(body);
+
+        } catch (Exception nfe) {
+            TextArea text =
+                new TextArea("Error! Invalid input. Try again! \nException: " + nfe );
+            text.setEditable(false);
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.getDialogPane().setPrefSize(377, 233);
+            alert.getDialogPane().setContent(text);
+            alert.setResizable(true);
+            alert.showAndWait();
+        }
+    };
 
     /**
-     * Accept a String and return true if it can be parsed as an int.
-     * @param s
-     * @return res
+     * Helper method for input validation that
+     * accepts a String and return true if it can be parsed as an int.
+     * @param s the zip code as a String
+     * @return res true if entered input is String of numbers.
      */
     public static boolean isInt(String s) {
         boolean res = false;
@@ -226,17 +264,13 @@ public class ApiApp extends Application {
         }
 
         return res;
-    }
+    } // isInt
 
     /** {@inheritDoc} */
     @Override
     public void start(Stage stage) {
         this.stage = stage;
-        // demonstrate how to load local asset using "file:resources/"
-//        this.getMovieReview(title);
-
-
-        scene = new Scene(root);
+        scene = new Scene(root, 720, 720);
 
         // setup stage
         stage.setTitle("ApiApp!");
@@ -247,13 +281,14 @@ public class ApiApp extends Application {
 
     } // start
 
-     /**
-      * Returns the request as String formatted in JSON.
-      * @param url the url
-      * @return search as the response body.
-      */
+    /**
+     * Returns the request as String formatted in JSON.
+     * @param url the url
+     * @return body as the response body.
+     */
     public static String connect(String url) {
         String body = "";
+        int responseCode = 0;
         try {
             // builds request and creates URI
             HttpRequest request = HttpRequest.newBuilder()
@@ -266,87 +301,81 @@ public class ApiApp extends Application {
             HttpResponse<String> response = HTTP_CLIENT.send(request, BodyHandlers.ofString());
 
             // checks status of resopnse -> if valid
-            if (response.statusCode() != 200) {
-                throw new IOException("HTTP " + response.statusCode());
+            responseCode = response.statusCode();
+            if (responseCode == 403) {
+                throw new IOException("reached the daily free limit for queries");
+            } else if (responseCode == 200 ) {
+                body =  response.body();
+            } else {
+                throw new IOException("HTTP " + responseCode);
             }
 
-            // uses response body
-            body =  response.body();
-//            System.out.println("body :" + body);
         } catch (IOException | InterruptedException e) {
-            System.err.println(e);
-            e.printStackTrace();
+            TextArea text =
+                new TextArea("Exception: " + e );
+            text.setEditable(false);
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.getDialogPane().setPrefSize(377, 233);
+            alert.getDialogPane().setContent(text);
+            alert.setResizable(true);
+            alert.showAndWait();
         }
         return body;
-    }
+    } // connect
 
     /**
-     * Parses the JSON output and .
-     * @param body the response body of JSON
+     * Parses the JSON output to display currently playing movies.
+     * @param body the response body of GraceNote API
      */
     public void parse(String body) {
         final Movie [] movie  = GSON.fromJson(body, Movie[].class);
-//        String firsttitle = movie[5].title;
         try {
             // gathers uris for posters
             posterUrls = new String [movie.length];
             for (int i = 0; i < movie.length; i++) {
                 String fullUrl = posterUrl + movie[i].preferredImage.uri;
                 posterUrls [i] = fullUrl;
-                //System.out.println("uris : " + fullUrl);
+                moviesMap.put(movie[i].title,movie[i]);
             }
-
             tilePane.setOrientation(Orientation.HORIZONTAL);
             tilePane.setTileAlignment(Pos.CENTER_LEFT);
             tilePane.setPrefRows(4);
-
             Image [] allImages = new Image [posterUrls.length];
-
+            // uploads posters of currently playing movies to TilePane
             for (int i = 0; i < posterUrls.length; i++) {
                 allImages [i] = new Image (posterUrls[i]);
                 ImageView imgView = new ImageView();
                 imgView.setImage(allImages[i]);
                 imgView.setFitWidth(100);
                 imgView.setFitHeight(100);
-
                 final String temp = movie[i].title;
+                // when user presses on a movie, produces Movie Review
                 imgView.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
                     System.out.println("Tile pressed ");
-                    //Alert a = new Alert(Alert.AlertType.INFORMATION);
-                    //a.setContentText(movieTitles[i]);
                     Popup a = new Popup();
                     VBox vBox = new VBox();
-
+                    vBox.setStyle("-fx-padding: 10;" + "-fx-border-style: solid inside;" +
+                        "-fx-border-width: 2; -fx-border-insets: 5; -fx-border-color: cadetblue;");
                     a.setAutoHide(true);
                     a.setAutoFix(true);
-
-                    Label popupLabel = new Label(temp + "\n" + this.getMovieReview(temp));
-                    popupLabel.setStyle("-fx-background-color:white;"
-                        + " -fx-text-fill:black;" + " -fx-font-size:14;"
-                        + " -fx-padding: 10px;" + " -fx-background-radius: 10;");
-//                    popupLabel.setWrapText(true);
-                    popupLabel.maxHeight(720);
-                    popupLabel.maxWidth(700);
-
+                    String movieShowInfo = this.getMovieShowInfo(temp);
+                    Text text = new Text("\n\n TITLE:\n" + temp + "\n"
+                        + movieShowInfo + "\n REVIEWS:\n" + this.getMovieReview(temp) + "\n\n");
+                    text.setWrappingWidth(550);
+                    text.setTextAlignment(TextAlignment.JUSTIFY);
                     // adds vBox to scrollPane
                     ScrollPane scrollPane = new ScrollPane(vBox);
 
-                    // adds label to vBox
-                    vBox.getChildren().add(popupLabel);
-                    scrollPane.setMaxHeight(720);
-                    scrollPane.setMaxWidth(800);
-//                    scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-//                    scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
+                    vBox.getChildren().add(text);
+                    scrollPane.setMaxHeight(600);
+                    scrollPane.setMaxWidth(600);
                     // adds scrollPane to popup
                     a.getContent().add(scrollPane);
-
                     a.show(stage);
                     event.consume();
                 });
                 tilePane.getChildren().add(imgView);
-            }
-
+            } // Mouse Event
         } catch (Exception e) {
             TextArea text =
                 new TextArea("Exception: " + e );
@@ -357,10 +386,15 @@ public class ApiApp extends Application {
             alert.setResizable(true);
             alert.showAndWait();
         } // try-catch
+    } // parse
 
-        //      return firsttitle;
-    }
-
+    /**
+     * After user presses a title in query handler,
+     * uses title to send request to TMDB API and parse JSON output for Movie reviews
+     * and prints the first 10 reviews.
+     * @param title the selected movie's title.
+     * @return reviewData the movie's reviews.
+     */
     public String getMovieReview(String title) {
         String reviewData = "";
 
@@ -380,7 +414,6 @@ public class ApiApp extends Application {
             // takes movie ID and returns review data
             reviewBody = this.connect("https://api.themoviedb.org/3/movie/"
             + id + "/reviews?" + "api_key=7df71a299c6ebb48c7ed1e01eb9e174b");
-
 
             TReviewsResponse revResponse  = GSON.fromJson(reviewBody, TReviewsResponse.class);
             if (revResponse.results.length == 0) {
@@ -408,9 +441,51 @@ public class ApiApp extends Application {
         return reviewData;
     }
 
-//    public String parseReviews(String reviewBody) {
 
-    //  }
+     /**
+      * After user presses a title in query handler,
+      * uses title to parse GraceNote API's JSON output for showtimes
+      * and prints the selected movie's showtimes.
+      * @param title the selected movie's title.
+      * @return data the movie's showtimes.
+      */
+    public String getMovieShowInfo(String title) {
+        String data = "";
+        Movie mov = moviesMap.get(title);
+
+        if (mov.topCast != null) {
+            data = data + "\nCASTING: \n";
+            for (String x:mov.topCast) {
+                data = data + x + "\n";
+                System.out.println(" topcast:" + x);
+            }
+        }
+        if (mov.directors != null) {
+            data = data + "\nDIRECTOR: \n";
+            for (String x:mov.directors) {
+                data = data + x + "\n";
+                System.out.println(" directors:" + x);
+            }
+        }
+        if (mov.genres != null) {
+            data = data + "\nGENRE: \n";
+            for (String x:mov.genres) {
+                data = data + x + "\n";
+                System.out.println(" Genre:" + x);
+            }
+        }
+        if (mov.showtimes != null) {
+            data = data + "\nSHOWTIMES: \n";
+            for (Showtime sh:mov.showtimes) {
+                if (sh.theatre != null) {
+                    data += sh.theatre.name + "\n" + sh.dateTime + "\n"
+                        + sh.ticketURI + "\n";
+                }
+            }
+        }
+        return data;
+    } // getMovieShowInfo
+
 
 
 } // ApiApp
