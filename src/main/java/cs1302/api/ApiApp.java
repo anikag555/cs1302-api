@@ -55,12 +55,17 @@ import javafx.stage.Popup;
 import javafx.scene.text.*;
 import java.util.HashMap;
 import java.lang.Math;
+import com.google.gson.annotations.SerializedName;
 
 /**
  * REPLACE WITH NON-SHOUTING DESCRIPTION OF YOUR APP.
  */
 public class ApiApp extends Application {
 
+    /**
+     * Represents response from GraceNote API, used to query and retrieve
+     * data of currently playing movies in theaters like titles,showtimes, and posters.
+     */
     private static class Movie {
         String tmsId;
         String title;
@@ -71,50 +76,78 @@ public class ApiApp extends Application {
         String [] genres;
     }
 
+    /**
+     * This represents the URL of currently playing movie poster image.
+     */
+    private static class PreferredImage {
+        String uri;
+    }
+
+    /**
+     * This represents the current playing movie showtimes in theaters.
+     */
     private static class Showtime {
         Theater theatre;
         String dateTime;
         String ticketURI;
     }
 
+    /**
+     * This represents theater information of the current playing movie.
+     */
     private static class Theater {
         String id;
         String name;
     }
 
+    /**
+     * This represents the reponse from the TMDB API for a given movie selected by the user.
+     */
     private static class TMovieResponse {
         int page;
         TMovie [] results;
     }
 
+    /**
+     * This represents the title of movie selected by the user
+     * and its respective movie identification for the TMDB API.
+     */
     private static class TMovie {
-        String original_title;
+        @SerializedName("original_title")
+        String orginalTitle;
         String id;
     }
 
-    private static class PreferredImage {
-        String uri;
-    }
-
+    /**
+     * This represents the results of reviews as the response from the TMDB API for
+     * the movie selected by the user.
+     */
     private static class TReviewsResponse {
         String id;
         String page;
         Review [] results;
     }
 
+    /**
+     * This represents the review data from the TMDB API for the movie selected by the user.
+     */
     private static class Review {
         String author;
-        AuthorDetails author_details;
+        @SerializedName("author_details")
+        AuthorDetails authorDetails;
         String content;
     }
 
+    /**
+     * This represents the author of the
+     * review data from the TMDB API for the movie selected by the user.
+     */
     private static class AuthorDetails {
         String username;
-        String avatar_path;
+        @SerializedName("avatar_path")
+        String avatarPath;
         String rating;
     }
-
-
 
    /** HTTP client. */
     public static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -122,7 +155,7 @@ public class ApiApp extends Application {
         .followRedirects(HttpClient.Redirect.NORMAL)  // always redirects, except from HTTPS to HTTP
         .build();                                     // builds and returns a HttpClient object
 
-/** Google {@code Gson} object for parsing JSON-formatted strings. */
+   /** Google {@code Gson} object for parsing JSON-formatted strings. */
 
     public static Gson GSON = new GsonBuilder()
         .setPrettyPrinting()                        // enable nice output when printing
@@ -175,8 +208,6 @@ public class ApiApp extends Application {
     @Override
     public void init() {
         // title layer
-        //Image bannerImage = new Image("https://static.vecteezy.com/system/resources/"
-        //  + "previews/011/834/992/original/blank-ticket-template-png.png");
         Image bannerImage = new Image ("file:resources/title1.png");
         ImageView banner = new ImageView(bannerImage);
         banner.setPreserveRatio(true);
@@ -217,23 +248,21 @@ public class ApiApp extends Application {
             String key1 = "pvk4aug6w8ntdmhftwgpeasb";
             String key2 = "fvekujkhpc7zxt7rtmx77gvr";
 
-
             int temp = (int)Math.round(Math.random());
-
             String url = "";
-
             if (temp == 0) {
                 url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
                     + key1 + "&startDate=" + newDate + "&zip=" + zip;
-                System.out.println("key1 is used");
             } else {
                 url = "https://data.tmsapi.com/v1.1/movies/showings?api_key="
                     + key2 + "&startDate=" + newDate + "&zip=" + zip;
-                System.out.println("key2 is used");
             }
 
             this.tilePane.getChildren().clear();
             String body = this.connect(url);
+            if (body.equals("")) {
+                throw new Exception("Invalid zip code!");
+            }
             this.parse(body);
 
         } catch (Exception nfe) {
@@ -256,14 +285,12 @@ public class ApiApp extends Application {
      */
     public static boolean isInt(String s) {
         boolean res = false;
-
         try {
             Integer.parseInt(s);
             res = true;
         } catch (NumberFormatException e) {
             res = false;
         }
-
         return res;
     } // isInt
 
@@ -303,8 +330,10 @@ public class ApiApp extends Application {
 
             // checks status of resopnse -> if valid
             responseCode = response.statusCode();
+            // checks for max queries
             if (responseCode == 403) {
-                throw new IOException("reached the daily free limit for queries");
+                throw new IOException("Reached the daily free API limit for queries!"
+                + "Try the search again for alternate API key!");
             } else if (responseCode == 200 ) {
                 body =  response.body();
             } else {
@@ -321,6 +350,7 @@ public class ApiApp extends Application {
             alert.setResizable(true);
             alert.showAndWait();
         }
+
         return body;
     } // connect
 
@@ -352,7 +382,6 @@ public class ApiApp extends Application {
                 final String temp = movie[i].title;
                 // when user presses on a movie, produces Movie Review
                 imgView.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-                    System.out.println("Tile pressed ");
                     Popup a = new Popup();
                     VBox vBox = new VBox();
                     vBox.setStyle("-fx-padding: 10;" + "-fx-border-style: solid inside;" +
@@ -366,7 +395,6 @@ public class ApiApp extends Application {
                     text.setTextAlignment(TextAlignment.JUSTIFY);
                     // adds vBox to scrollPane
                     ScrollPane scrollPane = new ScrollPane(vBox);
-
                     vBox.getChildren().add(text);
                     scrollPane.setMaxHeight(600);
                     scrollPane.setMaxWidth(600);
@@ -398,10 +426,8 @@ public class ApiApp extends Application {
      */
     public String getMovieReview(String title) {
         String reviewData = "";
-
         try {
             String ntitle = URLEncoder.encode(title, StandardCharsets.UTF_8);
-
             // takes title to get movie ID
             String body = this.connect("https://api.themoviedb.org/3/search/movie?api_key="
                 + "7df71a299c6ebb48c7ed1e01eb9e174b&query=" + ntitle);
@@ -429,49 +455,48 @@ public class ApiApp extends Application {
                         reviewData += "Review #" + x + "\n"
                             + r.content + "\n----------------------------- \n ";
                     } // if-else
-
                 } // for
-
             } // if-else
-            //System.out.println("review : " + revResponse.results[0].content);
-
         } catch (Exception e) {
             System.err.println(e);
             e.printStackTrace();
         }
         return reviewData;
-    }
+    } // getMovieReview
 
 
      /**
       * After user presses a title in query handler,
-      * uses title to parse GraceNote API's JSON output for showtimes
-      * and prints the selected movie's showtimes.
+      * uses title to parse GraceNote API's JSON output for showtime data
+      * and prints the selected movie's showtimes and related data.
       * @param title the selected movie's title.
-      * @return data the movie's showtimes.
+      * @return data the movie's showtimes and other data.
       */
     public String getMovieShowInfo(String title) {
         String data = "";
         Movie mov = moviesMap.get(title);
-
+        // movie casting
         if (mov.topCast != null) {
             data = data + "\nCASTING: \n";
             for (String x:mov.topCast) {
                 data = data + x + "\n";
             }
         }
+        // movie directors
         if (mov.directors != null) {
             data = data + "\nDIRECTOR: \n";
             for (String x:mov.directors) {
                 data = data + x + "\n";
             }
         }
+        // movie genres
         if (mov.genres != null) {
             data = data + "\nGENRE: \n";
             for (String x:mov.genres) {
                 data = data + x + "\n";
             }
         }
+        // movies showtimes
         if (mov.showtimes != null) {
             data = data + "\nSHOWTIMES: \n";
             for (Showtime sh:mov.showtimes) {
@@ -483,7 +508,5 @@ public class ApiApp extends Application {
         }
         return data;
     } // getMovieShowInfo
-
-
 
 } // ApiApp
