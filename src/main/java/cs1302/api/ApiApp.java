@@ -175,8 +175,9 @@ public class ApiApp extends Application {
     @Override
     public void init() {
         // title layer
-        Image bannerImage = new Image("https://static.vecteezy.com/system/resources/"
-            + "previews/011/834/992/original/blank-ticket-template-png.png");
+        //Image bannerImage = new Image("https://static.vecteezy.com/system/resources/"
+        //  + "previews/011/834/992/original/blank-ticket-template-png.png");
+        Image bannerImage = new Image ("file:resources/title1.png");
         ImageView banner = new ImageView(bannerImage);
         banner.setPreserveRatio(true);
         banner.setFitWidth(720);
@@ -421,8 +422,8 @@ public class ApiApp extends Application {
             } else {
                 int x = 0;
                 for (Review r : revResponse.results) {
-                    if (x++ == 5) {
-                        System.out.println("review : " + x + " " + reviewData);
+                    // counter to print the first 10 reviews
+                    if (x++ == 10) {
                         return reviewData;
                     } else {
                         reviewData += "Review #" + x + "\n"
@@ -457,21 +458,18 @@ public class ApiApp extends Application {
             data = data + "\nCASTING: \n";
             for (String x:mov.topCast) {
                 data = data + x + "\n";
-                System.out.println(" topcast:" + x);
             }
         }
         if (mov.directors != null) {
             data = data + "\nDIRECTOR: \n";
             for (String x:mov.directors) {
                 data = data + x + "\n";
-                System.out.println(" directors:" + x);
             }
         }
         if (mov.genres != null) {
             data = data + "\nGENRE: \n";
             for (String x:mov.genres) {
                 data = data + x + "\n";
-                System.out.println(" Genre:" + x);
             }
         }
         if (mov.showtimes != null) {
