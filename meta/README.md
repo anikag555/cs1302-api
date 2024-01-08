@@ -1,10 +1,4 @@
-# Deadline
-Deadline Option 1: SAT 2023-05-06 (MAY 06) @ 1:00 PM EST
-
-Modify this file to satisfy a submission requirement related to the project
-deadline. Please keep this file organized using Markdown. If you click on
-this file in your GitHub repository website, then you will see that the
-Markdown is transformed into nice looking HTML.
+# ReadMe
 
 ## Part 1: App Description
     This app takes a zip code as the user input to find moview reviews of the currently playing movies in that area along with
